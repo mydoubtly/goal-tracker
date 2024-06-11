@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Goal Tracker</title>
+<style>
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: #eef2f3;
+    margin: 0;
+    padding: 0;
+}
+
+.container {
+    width: 60%;
+    margin: 20px auto;
+    padding: 20px;
+    background: #fff;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    border-radius: 8px;
+}
+
+h1 {
+    text-align: center;
+    color: #333;
+}
+
+form {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 20px;
+}
+
+label, input, button {
+    margin-bottom: 10px;
+}
+
+input, button {
+    padding: 10px;
+    font-size: 1em;
+}
+
+button {
+    background-color: #007bff;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+button:hover {
+    background-color: #0056b3;
+}
+
+.tabs {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 20px;
+}
+
+.tab {
+    padding: 10px 20px;
+    background-color: #007bff;
+    color: white;
+    border: none;
+    cursor: pointer;
+    margin: 0 5px;
+    border-radius: 4px;
+}
+
+.tab:hover, .tab.active {
+    background-color: #0056b3;
+}
+
+.goalSection {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.goal {
+    padding: 15px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.goal h2 {
+    margin-top: 0;
+}
+
+.days {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+}
+
+.day {
+    padding: 5px 10px;
+    background: #ddd;
+    border-radius: 4px;
+}
+
+.day.completed {
+    background: #28a745;
+    color: white;
+}
+
+.checkbox {
+    margin-right: 10px;
+}
+
+#pagination {
+    display: flex;
+    justify-content: center;
+    margin-top: 20px;
+}
+
+.pagination-button {
+    padding: 10px;
+    margin: 0 5px;
+    background: #007bff;
+    color: white;
+    border: none;
+    cursor: pointer;
+    border-radius: 4px;
+}
+
+.pagination-button.disabled {
+    background: #ccc;
+    cursor: not-allowed;
+}
+
+</style>
+
+</head>
+<body>
+    <div class="container">
+        <h1>Goal Tracker</h1>
+        <form id="goalForm">
+            <label for="goalName">Goal Name:</label>
+            <input type="text" id="goalName" required>
+            <label for="goalDuration">Duration (days):</label>
+            <input type="number" id="goalDuration" required>
+            <button type="submit">Create Goal</button>
+        </form>
+        <div class="tabs">
+            <button class="tab" onclick="showTab('active')">Active Goals</button>
+            <button class="tab" onclick="showTab('completed')">Completed Goals</button>
+        </div>
+        <div id="activeGoals" class="goalSection"></div>
+        <div id="completedGoals" class="goalSection" style="display:none;"></div>
+        <div id="pagination"></div>
+    </div>
+    <script>
+    document.addEventListener('DOMContentLoaded', (event) => {
+    const goalForm = document.getElementById('goalForm');
+    const activeGoalsContainer = document.getElementById('activeGoals');
+    const completedGoalsContainer = document.getElementById('completedGoals');
+    const paginationContainer = document.getElementById('pagination');
+    const goals = JSON.parse(localStorage.getItem('goals')) || [];
+    let currentPage = 1;
+    const goalsPerPage = 5;
+
+    const saveGoals = () => {
+        localStorage.setItem('goals', JSON.stringify(goals));
+    };
+
+    const renderPagination = () => {
+        paginationContainer.innerHTML = '';
+        const totalPages = Math.ceil(goals.length / goalsPerPage);
+
+        for (let i = 1; i <= totalPages; i++) {
+            const button = document.createElement('button');
+            button.classList.add('pagination-button');
+            if (i === currentPage) {
+                button.classList.add('active');
+            }
+            button.innerText = i;
+            button.addEventListener('click', () => {
+                currentPage = i;
+                renderGoals();
+            });
+            paginationContainer.appendChild(button);
+        }
+    };
+
+    const renderGoals = () => {
+        activeGoalsContainer.innerHTML = '';
+        completedGoalsContainer.innerHTML = '';
+        const start = (currentPage - 1) * goalsPerPage;
+        const end = start + goalsPerPage;
+        const currentGoals = goals.slice(start, end);
+
+        currentGoals.forEach((goal, index) => {
+            const goalDiv = document.createElement('div');
+            goalDiv.classList.add('goal');
+
+            const goalTitle = document.createElement('h2');
+            goalTitle.innerText = goal.name;
+            goalDiv.appendChild(goalTitle);
+
+            const daysDiv = document.createElement('div');
+            daysDiv.classList.add('days');
+
+            goal.completedDays.forEach((completed, i) => {
+                const dayDiv = document.createElement('div');
+                dayDiv.classList.add('day');
+                if (completed) {
+                    dayDiv.classList.add('completed');
+                }
+
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.classList.add('checkbox');
+                checkbox.checked = completed;
+                checkbox.addEventListener('change', () => {
+                    goal.completedDays[i] = checkbox.checked;
+                    goal.points = goal.completedDays.filter(Boolean).length;
+                    saveGoals();
+                    renderGoals();
+                });
+
+                const dayLabel = document.createElement('span');
+                dayLabel.innerText = `Day ${i + 1}`;
+
+                dayDiv.appendChild(checkbox);
+                dayDiv.appendChild(dayLabel);
+                daysDiv.appendChild(dayDiv);
+            });
+
+            const points = document.createElement('p');
+            points.innerText = `Points: ${goal.points}`;
+            goalDiv.appendChild(daysDiv);
+            goalDiv.appendChild(points);
+
+            if (goal.completedDays.every(Boolean)) {
+                completedGoalsContainer.appendChild(goalDiv);
+            } else {
+                activeGoalsContainer.appendChild(goalDiv);
+            }
+        });
+
+        renderPagination();
+    };
+
+    goalForm.addEventListener('submit', (event) => {
+        event.preventDefault();
+        const goalName = document.getElementById('goalName').value;
+        const goalDuration = parseInt(document.getElementById('goalDuration').value);
+        const newGoal = {
+            name: goalName,
+            duration: goalDuration,
+            completedDays: Array(goalDuration).fill(false),
+            points: 0
+        };
+
+        goals.push(newGoal);
+        saveGoals();
+        renderGoals();
+        goalForm.reset();
+    });
+
+    window.showTab = (tabName) => {
+        if (tabName === 'active') {
+            activeGoalsContainer.style.display = 'flex';
+            completedGoalsContainer.style.display = 'none';
+        } else if (tabName === 'completed') {
+            activeGoalsContainer.style.display = 'none';
+            completedGoalsContainer.style.display = 'flex';
+        }
+    };
+
+    renderGoals();
+});
+
+
+</script>
+</body>
+</html>
